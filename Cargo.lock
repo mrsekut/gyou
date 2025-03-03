@@ -3,16 +3,6 @@
 version = 4
 
 [[package]]
-name = "aaa"
-version = "0.1.0"
-dependencies = [
- "clap",
- "crossterm",
- "ratatui",
- "walkdir",
-]
-
-[[package]]
 name = "allocator-api2"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -254,6 +244,16 @@ name = "foldhash"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a0d2fde1f7b3d48b8395d5f2de76c18a528bd6a9cdde438df747bfcba3e05d6f"
+
+[[package]]
+name = "gyou"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "crossterm",
+ "ratatui",
+ "walkdir",
+]
 
 [[package]]
 name = "hashbrown"
