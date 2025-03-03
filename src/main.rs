@@ -5,8 +5,10 @@ use crossterm::{
 };
 use ratatui::{
     backend::CrosstermBackend,
+    style::{Color, Style}, // 追加
     widgets::{Block, Borders, List, ListItem, ListState},
-    CompletedFrame, Terminal,
+    CompletedFrame,
+    Terminal,
 };
 use std::{
     env, fs,
@@ -89,20 +91,29 @@ fn draw_ui<'a>(
     })
 }
 
-// イベント処理: 左右キーにより、親/子ディレクトリへの移動を行う（ファイル選択時は移動しない）
+// イベント処理: 左右キーにより、親/子ディレクトリへの移動を行う（ただし、初期ディレクトリでは左矢印無効）
 fn handle_event(
     current_dir: &str,
+    base: &str,
     state: &mut ListState,
     items: &[(String, usize, bool)],
 ) -> Option<String> {
     if let Event::Key(key) = event::read().ok()? {
         match key.code {
+            // q で終了
+            KeyCode::Char('q') => return Some("__exit__".to_string()),
+            // 左矢印: 現在がbaseなら移動しない
             KeyCode::Left => {
+                if current_dir == base {
+                    return None;
+                }
                 if let Some(parent) = Path::new(current_dir).parent() {
                     return Some(parent.to_string_lossy().to_string());
+                } else {
+                    return Some(current_dir.to_string());
                 }
             }
-            // 右矢印で、選択中がディレクトリの場合のみ子ディレクトリへ移動
+            // 右矢印: 選択中がディレクトリの場合のみ子ディレクトリへ移動
             KeyCode::Right => {
                 if let Some(i) = state.selected() {
                     if items.get(i).map(|v| v.2).unwrap_or(false) {
@@ -122,8 +133,6 @@ fn handle_event(
                     idx
                 }));
             }
-            // ESCで終了
-            KeyCode::Esc => return Some("__exit__".to_string()),
             _ => {}
         }
     }
@@ -133,27 +142,30 @@ fn handle_event(
 fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
     let root = if args.len() > 1 { &args[1] } else { "src" };
-    let mut current_dir = root.to_string();
+    let base = root.to_string(); // 初期ディレクトリを保持
+    let mut current_dir = base.clone();
     let mut list_state = ListState::default();
     list_state.select(Some(0));
 
     let mut terminal = setup_terminal()?;
 
     loop {
-        // ファイルも含めたエントリを取得
         let items = list_dir_items(&current_dir, &["ts", "tsx"])?;
-        // ListItem の表示に、[DIR]または[FILE]のタグを追加
         let list_items: Vec<ListItem> = items
             .iter()
             .map(|(p, cnt, is_dir)| {
-                let tag = if *is_dir { "[DIR]" } else { "[FILE]" };
-                ListItem::new(format!("{:<40} {} {}", p, cnt, tag))
+                let style = if *is_dir {
+                    Style::default().fg(Color::Blue)
+                } else {
+                    Style::default().fg(Color::White)
+                };
+                ListItem::new(format!("{:<40} {}", p, cnt,)).style(style)
             })
             .collect();
 
         draw_ui(&mut terminal, &current_dir, &mut list_state, &list_items)?;
         if event::poll(std::time::Duration::from_millis(500))? {
-            if let Some(next_dir) = handle_event(&current_dir, &mut list_state, &items) {
+            if let Some(next_dir) = handle_event(&current_dir, &base, &mut list_state, &items) {
                 if next_dir == "__exit__" {
                     break;
                 }
