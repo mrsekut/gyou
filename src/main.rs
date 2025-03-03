@@ -182,7 +182,7 @@ fn main() -> io::Result<()> {
                 } else {
                     Style::default().fg(Color::White)
                 };
-                ListItem::new(format!("{:<40} {}", p, cnt,)).style(style)
+                ListItem::new(format!("{:>6} {}", cnt, p)).style(style)
             })
             .collect();
 
