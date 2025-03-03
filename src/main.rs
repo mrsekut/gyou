@@ -46,13 +46,13 @@ fn main() -> io::Result<()> {
         let items = list_dir_items(&current_dir, &["ts", "tsx"])?;
         let list_items: Vec<ListItem> = items
             .iter()
-            .map(|(p, cnt, is_dir)| {
-                let style = if *is_dir {
+            .map(|item| {
+                let style = if item.is_dir {
                     Style::default().fg(Color::Blue)
                 } else {
                     Style::default().fg(Color::White)
                 };
-                ListItem::new(format!("{:>6} {}", cnt, p)).style(style)
+                ListItem::new(format!("{:>6} {}", item.count, item.path)).style(style)
             })
             .collect();
 

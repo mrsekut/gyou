@@ -7,6 +7,8 @@ use ratatui::{
 };
 use std::{fs, io, path::Path};
 
+use crate::directory::DirItem;
+
 pub fn draw_ui<'a>(
     terminal: &'a mut Terminal<CrosstermBackend<io::Stdout>>,
     current_dir: &'a str,
@@ -35,7 +37,7 @@ pub fn handle_event(
     current_dir: &str,
     base: &str,
     state: &mut ListState,
-    items: &[(String, usize, bool)],
+    items: &[DirItem],
 ) -> Option<String> {
     if let Event::Key(key) = event::read().ok()? {
         match key.code {
@@ -62,8 +64,8 @@ pub fn handle_event(
             }
             KeyCode::Right => {
                 if let Some(i) = state.selected() {
-                    if items.get(i).map(|v| v.2).unwrap_or(false) {
-                        return Some(items[i].0.clone());
+                    if items.get(i).map(|v| v.is_dir).unwrap_or(false) {
+                        return Some(items[i].path.clone());
                     }
                 }
             }
