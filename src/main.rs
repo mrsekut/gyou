@@ -18,20 +18,6 @@ use directory::list_dir_items;
 use ratatui::widgets::ListState;
 use ui::{draw_ui, handle_event};
 
-fn setup_terminal() -> io::Result<Terminal<CrosstermBackend<io::Stdout>>> {
-    let mut out = stdout();
-    execute!(out, EnterAlternateScreen)?;
-    terminal::enable_raw_mode()?;
-    let backend = CrosstermBackend::new(out);
-    Terminal::new(backend)
-}
-
-fn restore_terminal<T: io::Write>(terminal: &mut Terminal<CrosstermBackend<T>>) -> io::Result<()> {
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    terminal::disable_raw_mode()?;
-    Ok(())
-}
-
 fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
     let root = if args.len() > 1 { &args[1] } else { "src" };
@@ -67,4 +53,18 @@ fn main() -> io::Result<()> {
     }
 
     restore_terminal(&mut terminal)
+}
+
+fn setup_terminal() -> io::Result<Terminal<CrosstermBackend<io::Stdout>>> {
+    let mut out = stdout();
+    execute!(out, EnterAlternateScreen)?;
+    terminal::enable_raw_mode()?;
+    let backend = CrosstermBackend::new(out);
+    Terminal::new(backend)
+}
+
+fn restore_terminal<T: io::Write>(terminal: &mut Terminal<CrosstermBackend<T>>) -> io::Result<()> {
+    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    terminal::disable_raw_mode()?;
+    Ok(())
 }
