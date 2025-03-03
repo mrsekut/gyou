@@ -15,11 +15,12 @@ use std::{
 };
 use walkdir::WalkDir;
 
-// ルート直下のサブディレクトリごとに、対象拡張子(ts, tsx)の行数合計を返す
-fn count_lines_in_subdirs(root: &str, exts: &[&str]) -> Vec<(String, usize)> {
+// 新規: 現在のディレクトリ内のエントリ（ディレクトリまたはファイル）の一覧を返す
+// 戻り値のタプルは (パス, 行数, is_directory)
+fn list_dir_items(root: &str, exts: &[&str]) -> io::Result<Vec<(String, usize, bool)>> {
     let mut results = Vec::new();
-    if let Ok(entries) = fs::read_dir(root) {
-        for entry in entries.filter_map(Result::ok) {
+    for entry in fs::read_dir(root)? {
+        if let Ok(entry) = entry {
             let path = entry.path();
             if path.is_dir() {
                 let sum: usize = WalkDir::new(&path)
@@ -36,13 +37,22 @@ fn count_lines_in_subdirs(root: &str, exts: &[&str]) -> Vec<(String, usize)> {
                     .flatten()
                     .map(|content| content.lines().count())
                     .sum();
-                results.push((path.to_string_lossy().to_string(), sum));
+                results.push((path.to_string_lossy().to_string(), sum, true));
+            } else if path.is_file() {
+                if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
+                    if exts.contains(&ext) {
+                        let count = fs::read_to_string(&path)
+                            .map(|content| content.lines().count())
+                            .unwrap_or(0);
+                        results.push((path.to_string_lossy().to_string(), count, false));
+                    }
+                }
             }
         }
     }
-    // 降順ソート
+    // 降順ソート（行数で並び替え）
     results.sort_by(|a, b| b.1.cmp(&a.1));
-    results
+    Ok(results)
 }
 
 // ターミナルのセットアップ
@@ -61,7 +71,7 @@ fn restore_terminal<T: io::Write>(terminal: &mut Terminal<CrosstermBackend<T>>) 
     Ok(())
 }
 
-// UI描画: 現在のディレクトリとそのサブディレクトリの行数リストを表示
+// UI描画: 現在のディレクトリとそのエントリの行数リストを表示
 fn draw_ui<'a>(
     terminal: &'a mut Terminal<CrosstermBackend<io::Stdout>>,
     current_dir: &'a str,
@@ -79,11 +89,11 @@ fn draw_ui<'a>(
     })
 }
 
-// イベント処理: UI上での操作を反映し、次のディレクトリ（または上位ディレクトリ）を返す
+// イベント処理: 左右キーにより、親/子ディレクトリへの移動を行う（ファイル選択時は移動しない）
 fn handle_event(
     current_dir: &str,
     state: &mut ListState,
-    items: &[(String, usize)],
+    items: &[(String, usize, bool)],
 ) -> Option<String> {
     if let Event::Key(key) = event::read().ok()? {
         match key.code {
@@ -130,15 +140,20 @@ fn main() -> io::Result<()> {
     let mut terminal = setup_terminal()?;
 
     loop {
-        let counts = count_lines_in_subdirs(&current_dir, &["ts", "tsx"]);
-        let list_items: Vec<ListItem> = counts
+        // ファイルも含めたエントリを取得
+        let items = list_dir_items(&current_dir, &["ts", "tsx"])?;
+        // ListItem の表示に、[DIR]または[FILE]のタグを追加
+        let list_items: Vec<ListItem> = items
             .iter()
-            .map(|(p, cnt)| ListItem::new(format!("{:<40} {}", p, cnt)))
+            .map(|(p, cnt, is_dir)| {
+                let tag = if *is_dir { "[DIR]" } else { "[FILE]" };
+                ListItem::new(format!("{:<40} {} {}", p, cnt, tag))
+            })
             .collect();
 
         draw_ui(&mut terminal, &current_dir, &mut list_state, &list_items)?;
         if event::poll(std::time::Duration::from_millis(500))? {
-            if let Some(next_dir) = handle_event(&current_dir, &mut list_state, &counts) {
+            if let Some(next_dir) = handle_event(&current_dir, &mut list_state, &items) {
                 if next_dir == "__exit__" {
                     break;
                 }
