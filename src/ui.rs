@@ -13,6 +13,7 @@ use std::{
 
 use crate::directory::DirItem;
 
+// TODO: lean
 pub fn draw_ui<'a>(
     terminal: &'a mut Terminal<CrosstermBackend<io::Stdout>>,
     current_dir: &'a str,
