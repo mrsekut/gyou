@@ -16,8 +16,12 @@ use ui::{draw_ui, handle_event};
 struct Args {
     #[clap(default_value = "src")]
     root: String,
-    #[clap(long, help = "File extension filter (comma separated), e.g., ts,tsx")]
-    file_ext: Option<String>,
+    #[clap(
+        long = "ext",
+        short = 'e',
+        help = "File extension filter (comma separated), e.g., ts,tsx"
+    )]
+    ext: Option<String>,
 }
 
 // 実行方法:
@@ -31,7 +35,7 @@ fn main() -> io::Result<()> {
     let mut list_state = ListState::default();
     list_state.select(Some(0));
 
-    let ext_filter: Vec<String> = if let Some(exts) = args.file_ext {
+    let ext_filter: Vec<String> = if let Some(exts) = args.ext {
         exts.split(',')
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
