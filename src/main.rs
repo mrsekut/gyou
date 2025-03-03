@@ -1,22 +1,31 @@
+use clap::Parser;
 use crossterm::{
     execute,
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
-use std::{
-    env,
-    io::{self, stdout},
-};
+use std::io::{self, stdout};
 mod directory;
 mod ui;
 use directory::list_dir_items;
 use ratatui::widgets::ListState;
 use ui::{draw_ui, handle_event};
 
+// 引数パーサの定義
+#[derive(Parser)]
+#[clap(author, version, about)]
+struct Args {
+    #[clap(default_value = "src")]
+    root: String,
+}
+
+// 実行方法:
+//     cargo run -- [検索するルートディレクトリ]
+// 例: cargo run -- src
 fn main() -> io::Result<()> {
-    let args: Vec<String> = env::args().collect();
-    let root = if args.len() > 1 { &args[1] } else { "src" };
-    let base = root.to_string();
+    let args = Args::parse(); // clapで引数をパースする
+    let root = args.root;
+    let base = root.clone();
     let mut current_dir = base.clone();
     let mut list_state = ListState::default();
     list_state.select(Some(0));
@@ -47,7 +56,9 @@ fn setup_terminal() -> io::Result<Terminal<CrosstermBackend<io::Stdout>>> {
     Terminal::new(backend)
 }
 
-fn restore_terminal<T: io::Write>(terminal: &mut Terminal<CrosstermBackend<T>>) -> io::Result<()> {
+fn restore_terminal<T: std::io::Write>(
+    terminal: &mut Terminal<CrosstermBackend<T>>,
+) -> io::Result<()> {
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     terminal::disable_raw_mode()?;
     Ok(())
