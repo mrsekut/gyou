@@ -87,7 +87,19 @@ fn handle_event(
 ) -> Option<String> {
     if let Event::Key(key) = event::read().ok()? {
         match key.code {
-            KeyCode::Esc => return Some("__exit__".to_string()),
+            KeyCode::Left => {
+                if let Some(parent) = Path::new(current_dir).parent() {
+                    return Some(parent.to_string_lossy().to_string());
+                }
+            }
+            // 右矢印で、選択中がディレクトリの場合のみ子ディレクトリへ移動
+            KeyCode::Right => {
+                if let Some(i) = state.selected() {
+                    if items.get(i).map(|v| v.2).unwrap_or(false) {
+                        return Some(items[i].0.clone());
+                    }
+                }
+            }
             KeyCode::Up => {
                 let idx = state.selected().unwrap_or(0);
                 state.select(Some(if idx > 0 { idx - 1 } else { 0 }));
@@ -100,16 +112,8 @@ fn handle_event(
                     idx
                 }));
             }
-            KeyCode::Enter => {
-                if let Some(i) = state.selected() {
-                    return Some(items[i].0.clone());
-                }
-            }
-            KeyCode::Backspace => {
-                if let Some(parent) = Path::new(current_dir).parent() {
-                    return Some(parent.to_string_lossy().to_string());
-                }
-            }
+            // ESCで終了
+            KeyCode::Esc => return Some("__exit__".to_string()),
             _ => {}
         }
     }
