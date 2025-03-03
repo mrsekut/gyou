@@ -2,12 +2,7 @@ use crossterm::{
     execute,
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{
-    backend::CrosstermBackend,
-    style::{Color, Style},
-    widgets::ListItem,
-    Terminal,
-};
+use ratatui::{backend::CrosstermBackend, Terminal};
 use std::{
     env,
     io::{self, stdout},
@@ -30,19 +25,8 @@ fn main() -> io::Result<()> {
 
     loop {
         let items = list_dir_items(&current_dir, &["ts", "tsx"])?;
-        let list_items: Vec<ListItem> = items
-            .iter()
-            .map(|item| {
-                let style = if item.is_dir {
-                    Style::default().fg(Color::Blue)
-                } else {
-                    Style::default().fg(Color::White)
-                };
-                ListItem::new(format!("{:>6} {}", item.count, item.path)).style(style)
-            })
-            .collect();
 
-        draw_ui(&mut terminal, &current_dir, &mut list_state, &list_items)?;
+        draw_ui(&mut terminal, &current_dir, &mut list_state, &items)?;
         if let Some(next_dir) = handle_event(&current_dir, &base, &mut list_state, &items) {
             if next_dir == "__exit__" {
                 break;

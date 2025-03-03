@@ -2,6 +2,7 @@ use crossterm::event::{self, Event, KeyCode};
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
+    style::{Color, Style},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
     CompletedFrame, Terminal,
 };
@@ -16,8 +17,20 @@ pub fn draw_ui<'a>(
     terminal: &'a mut Terminal<CrosstermBackend<io::Stdout>>,
     current_dir: &'a str,
     state: &'a mut ListState,
-    list_items: &'a [ListItem<'a>],
+    items: &'a [DirItem],
 ) -> Result<CompletedFrame<'a>, io::Error> {
+    let list_items: Vec<ListItem> = items
+        .iter()
+        .map(|item| {
+            let style = if item.is_dir {
+                Style::default().fg(Color::Blue)
+            } else {
+                Style::default().fg(Color::White)
+            };
+            ListItem::new(format!("{:>6} {}", item.count, item.path)).style(style)
+        })
+        .collect();
+
     terminal.draw(|f| {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -25,7 +38,7 @@ pub fn draw_ui<'a>(
             .split(f.area());
         let title = format!("Code Volume - {}", current_dir);
         let list_block = Block::default().borders(Borders::ALL).title(title);
-        let list = List::new(list_items.iter().cloned().collect::<Vec<_>>())
+        let list = List::new(list_items)
             .block(list_block)
             .highlight_symbol(">> ");
         let _ = f.render_stateful_widget(list, chunks[0], state);
