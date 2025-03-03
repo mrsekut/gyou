@@ -114,13 +114,24 @@ fn handle_event(
         match key.code {
             // q で終了
             KeyCode::Char('q') => return Some("__exit__".to_string()),
-            // 左矢印: 現在がbaseなら移動しない
+            // 左矢印: 現在のディレクトリと base を canonicalize して比較
             KeyCode::Left => {
-                if current_dir == base {
+                let canon_current = fs::canonicalize(current_dir)
+                    .unwrap_or_else(|_| Path::new(current_dir).to_path_buf());
+                let canon_base =
+                    fs::canonicalize(base).unwrap_or_else(|_| Path::new(base).to_path_buf());
+                if canon_current == canon_base {
                     return None;
                 }
                 if let Some(parent) = Path::new(current_dir).parent() {
-                    return Some(parent.to_string_lossy().to_string());
+                    let canon_parent =
+                        fs::canonicalize(parent).unwrap_or_else(|_| parent.to_path_buf());
+                    // 上位へ移動しても base 以下でなければ無効
+                    if canon_parent.starts_with(&canon_base) {
+                        return Some(parent.to_string_lossy().to_string());
+                    } else {
+                        return None;
+                    }
                 } else {
                     return Some(current_dir.to_string());
                 }
