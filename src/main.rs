@@ -5,8 +5,9 @@ use crossterm::{
 };
 use ratatui::{
     backend::CrosstermBackend,
-    style::{Color, Style}, // 追加
-    widgets::{Block, Borders, List, ListItem, ListState},
+    layout::{Constraint, Direction, Layout}, // 追加
+    style::{Color, Style},
+    widgets::{Block, Borders, List, ListItem, ListState, Paragraph}, // Paragraph 追加
     CompletedFrame,
     Terminal,
 };
@@ -80,14 +81,25 @@ fn draw_ui<'a>(
     state: &'a mut ListState,
     list_items: &'a [ListItem<'a>],
 ) -> Result<CompletedFrame<'a>, std::io::Error> {
-    let title = format!("Code Volume - {}", current_dir);
     terminal.draw(|f| {
-        let size = f.size();
-        let block = Block::default().borders(Borders::ALL).title(title);
+        // 全体をリストと footer に分割
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
+            .split(f.size());
+        // リスト部分
+        let title = format!("Code Volume - {}", current_dir);
+        let list_block = Block::default().borders(Borders::ALL).title(title);
         let list = List::new(list_items.iter().cloned().collect::<Vec<_>>())
-            .block(block)
+            .block(list_block)
             .highlight_symbol(">> ");
-        let _ = f.render_stateful_widget(list, size, state);
+        let _ = f.render_stateful_widget(list, chunks[0], state);
+
+        // footer 部分: キー操作の案内
+        let footer_text = "<-: Parent   ->: Child   ↑↓: Select   q: Quit";
+        let footer = Paragraph::new(footer_text)
+            .block(Block::default().borders(Borders::ALL).title("Instructions"));
+        f.render_widget(footer, chunks[1]);
     })
 }
 
