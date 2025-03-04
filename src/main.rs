@@ -1,5 +1,7 @@
+use app::App;
 use clap::Parser;
 use std::io::{self};
+mod app;
 mod directory;
 mod ui;
 use directory::list_dir_items;
@@ -22,6 +24,7 @@ struct Args {
 // 実行方法:
 //     cargo run -- [検索するルートディレクトリ] [--file-ext "拡張子,拡張子"]
 // 例: cargo run -- src --file-ext "rs,txt"
+// TODO: clean
 fn main() -> io::Result<()> {
     let args = Args::parse();
     let root = args.root;
@@ -41,20 +44,21 @@ fn main() -> io::Result<()> {
     let ext_filter_ref: Vec<&str> = ext_filter.iter().map(|s| s.as_str()).collect();
 
     let mut terminal = ratatui::init();
+    let app_result = App::new(&current_dir).run(&mut terminal);
 
-    loop {
-        let items = list_dir_items(&current_dir, &ext_filter_ref)?;
+    // loop {
+    //     let items = list_dir_items(&current_dir, &ext_filter_ref)?;
 
-        draw_ui(&mut terminal, &current_dir, &mut list_state, &items)?;
-        if let Some(next_dir) = handle_event(&current_dir, &base, &mut list_state, &items) {
-            if next_dir == "__exit__" {
-                break;
-            }
-            current_dir = next_dir;
-            list_state.select(Some(0));
-        }
-    }
+    //     draw_ui(&mut terminal, &current_dir, &mut list_state, &items)?;
+    //     if let Some(next_dir) = handle_event(&current_dir, &base, &mut list_state, &items) {
+    //         if next_dir == "__exit__" {
+    //             break;
+    //         }
+    //         current_dir = next_dir;
+    //         list_state.select(Some(0));
+    //     }
+    // }
 
     ratatui::restore();
-    Ok(())
+    app_result
 }
