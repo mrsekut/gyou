@@ -8,6 +8,7 @@ pub struct DirItem {
     pub is_dir: bool,
 }
 
+// TODO: clean:args&
 /// 指定したルートディレクトリ内の各エントリを処理し、
 /// DirItem の Vec として返す。行数で降順ソートする。
 pub fn list_dir_items(root: &str, exts: &Vec<String>) -> Result<Vec<DirItem>, io::Error> {

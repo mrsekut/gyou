@@ -3,7 +3,6 @@ use clap::Parser;
 use std::io::{self};
 mod app;
 mod directory;
-mod ui;
 
 #[derive(Parser)]
 #[clap(author, version, about)]
@@ -24,8 +23,6 @@ struct Args {
 // TODO: clean
 fn main() -> io::Result<()> {
     let args = Args::parse();
-    let root = args.root;
-
     let ext_filter: Vec<String> = if let Some(exts) = args.ext {
         exts.split(',')
             .map(|s| s.trim().to_string())
@@ -36,7 +33,7 @@ fn main() -> io::Result<()> {
     };
 
     let mut terminal = ratatui::init();
-    let app_result = App::new(&root, &ext_filter).run(&mut terminal);
+    let app_result = App::new(&args.root, &ext_filter).run(&mut terminal);
 
     ratatui::restore();
     app_result

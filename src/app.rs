@@ -30,9 +30,8 @@ struct SizeList {
     state: ListState,
 }
 
-// TODO: fix:unwrap, clone
+// TODO: fix:unwrap, clone, args&
 impl App {
-    // TODO: args
     pub fn new(base_dir: &str, exts: &Vec<String>) -> Self {
         let items = list_dir_items(&base_dir, exts).unwrap();
         let mut state = ListState::default();
@@ -66,8 +65,8 @@ impl App {
             KeyCode::Char('q') | KeyCode::Esc => self.exit(),
             KeyCode::Up => self.select_prev(),
             KeyCode::Down => self.select_next(),
-            KeyCode::Left => self.move_to_parent(),
             KeyCode::Right => self.move_to_child(),
+            KeyCode::Left => self.move_to_parent(),
             _ => {}
         }
     }
@@ -84,10 +83,6 @@ impl App {
         self.list.state.select_next();
     }
 
-    fn move_to_parent(&mut self) {
-        todo!()
-    }
-
     fn move_to_child(&mut self) {
         if let Some(i) = self.list.state.selected() {
             let item = &self.list.items[i];
@@ -97,6 +92,27 @@ impl App {
             }
         }
     }
+
+    fn move_to_parent(&mut self) {
+        if self.is_at_root() {
+            return;
+        }
+
+        let parent = Path::new(&self.cur_dir).parent().unwrap();
+
+        self.cur_dir = parent.to_string_lossy().to_string();
+        self.list.items = list_dir_items(&self.cur_dir, &self.exts).unwrap();
+    }
+
+    fn is_at_root(&self) -> bool {
+        let canon_current = canonicalize_path(&self.cur_dir);
+        let canon_base = canonicalize_path(&self.base_dir);
+        canon_current == canon_base
+    }
+}
+
+fn canonicalize_path(path: &str) -> PathBuf {
+    fs::canonicalize(path).unwrap_or_else(|_| Path::new(path).to_path_buf())
 }
 
 impl Widget for &mut App {
