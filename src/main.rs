@@ -1,10 +1,5 @@
 use clap::Parser;
-use crossterm::{
-    execute,
-    terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
-};
-use ratatui::{backend::CrosstermBackend, Terminal};
-use std::io::{self, stdout};
+use std::io::{self};
 mod directory;
 mod ui;
 use directory::list_dir_items;
@@ -45,7 +40,7 @@ fn main() -> io::Result<()> {
     };
     let ext_filter_ref: Vec<&str> = ext_filter.iter().map(|s| s.as_str()).collect();
 
-    let mut terminal = setup_terminal()?;
+    let mut terminal = ratatui::init();
 
     loop {
         let items = list_dir_items(&current_dir, &ext_filter_ref)?;
@@ -60,21 +55,6 @@ fn main() -> io::Result<()> {
         }
     }
 
-    restore_terminal(&mut terminal)
-}
-
-fn setup_terminal() -> io::Result<Terminal<CrosstermBackend<io::Stdout>>> {
-    let mut out = stdout();
-    execute!(out, EnterAlternateScreen)?;
-    terminal::enable_raw_mode()?;
-    let backend = CrosstermBackend::new(out);
-    Terminal::new(backend)
-}
-
-fn restore_terminal<T: std::io::Write>(
-    terminal: &mut Terminal<CrosstermBackend<T>>,
-) -> io::Result<()> {
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    terminal::disable_raw_mode()?;
+    ratatui::restore();
     Ok(())
 }
