@@ -10,7 +10,7 @@ pub struct DirItem {
 
 /// 指定したルートディレクトリ内の各エントリを処理し、
 /// DirItem の Vec として返す。行数で降順ソートする。
-pub fn list_dir_items(root: &str, exts: &[&str]) -> io::Result<Vec<DirItem>> {
+pub fn list_dir_items(root: &str, exts: &Vec<String>) -> Result<Vec<DirItem>, io::Error> {
     let mut results = Vec::new();
 
     for entry in fs::read_dir(root)? {
@@ -31,7 +31,7 @@ pub fn list_dir_items(root: &str, exts: &[&str]) -> io::Result<Vec<DirItem>> {
     Ok(results)
 }
 
-fn process_directory(dir: &Path, exts: &[&str]) -> DirItem {
+fn process_directory(dir: &Path, exts: &Vec<String>) -> DirItem {
     let count = sum_lines_in_directory(dir, exts);
     DirItem {
         path: dir.to_string_lossy().into(),
@@ -41,7 +41,7 @@ fn process_directory(dir: &Path, exts: &[&str]) -> DirItem {
 }
 
 /// 再帰的に対象拡張子のファイルの行数を合計する
-fn sum_lines_in_directory(dir: &Path, exts: &[&str]) -> usize {
+fn sum_lines_in_directory(dir: &Path, exts: &Vec<String>) -> usize {
     WalkDir::new(dir)
         .into_iter()
         .filter_map(Result::ok)
@@ -50,7 +50,7 @@ fn sum_lines_in_directory(dir: &Path, exts: &[&str]) -> usize {
             f.path()
                 .extension()
                 .and_then(|s| s.to_str())
-                .filter(|ext| exts.contains(ext))
+                .filter(|ext| exts.contains(&ext.to_string()))
                 .and_then(|_| fs::read_to_string(f.path()).ok())
         })
         .map(|content| content.lines().count())
@@ -58,9 +58,9 @@ fn sum_lines_in_directory(dir: &Path, exts: &[&str]) -> usize {
 }
 
 /// 対象拡張子なら DirItem を返す
-fn process_file(file: &Path, exts: &[&str]) -> Option<DirItem> {
+fn process_file(file: &Path, exts: &Vec<String>) -> Option<DirItem> {
     if let Some(ext) = file.extension().and_then(|s| s.to_str()) {
-        if exts.contains(&ext) {
+        if exts.contains(&ext.to_string()) {
             let count = fs::read_to_string(file)
                 .map(|content| content.lines().count())
                 .unwrap_or(0);

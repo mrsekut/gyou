@@ -1,56 +1,11 @@
 use crossterm::event::{self, Event, KeyCode};
-use ratatui::{
-    backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout},
-    style::{Color, Style},
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
-    CompletedFrame, Terminal,
-};
+use ratatui::widgets::ListState;
 use std::{
-    fs, io,
+    fs,
     path::{Path, PathBuf},
 };
 
 use crate::directory::DirItem;
-
-// TODO: lean
-pub fn draw_ui<'a>(
-    terminal: &'a mut Terminal<CrosstermBackend<io::Stdout>>,
-    current_dir: &'a str,
-    state: &'a mut ListState,
-    items: &'a [DirItem],
-) -> Result<CompletedFrame<'a>, io::Error> {
-    let list_items: Vec<ListItem> = items
-        .iter()
-        .map(|item| {
-            let style = if item.is_dir {
-                Style::default().fg(Color::Blue)
-            } else {
-                Style::default().fg(Color::White)
-            };
-            ListItem::new(format!("{:>6} {}", item.count, item.path)).style(style)
-        })
-        .collect();
-
-    terminal.draw(|f| {
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
-            .split(f.area());
-        let title = format!("Code Volume - {}", current_dir);
-        let list_block = Block::default().borders(Borders::ALL).title(title);
-        let list = List::new(list_items)
-            .block(list_block)
-            .highlight_symbol(">> ");
-        let _ = f.render_stateful_widget(list, chunks[0], state);
-
-        let footer_text = "←: Parent   →: Child   ↑↓: Select   q: Quit";
-        let footer = Paragraph::new(footer_text)
-            .block(Block::default().borders(Borders::ALL).title("Instructions"));
-
-        f.render_widget(footer, chunks[1]);
-    })
-}
 
 pub fn handle_event(
     current_dir: &str,
@@ -60,7 +15,6 @@ pub fn handle_event(
 ) -> Option<String> {
     if let Event::Key(key) = event::read().ok()? {
         match key.code {
-            KeyCode::Char('q') => return Some("__exit__".to_string()),
             KeyCode::Left => {
                 if is_at_root(current_dir, base) {
                     return None;
@@ -74,18 +28,6 @@ pub fn handle_event(
                     }
                 }
                 return None;
-            }
-            KeyCode::Up => {
-                let idx = state.selected().unwrap_or(0);
-                state.select(Some(if idx > 0 { idx - 1 } else { 0 }));
-            }
-            KeyCode::Down => {
-                let idx = state.selected().unwrap_or(0);
-                state.select(Some(if idx < items.len().saturating_sub(1) {
-                    idx + 1
-                } else {
-                    idx
-                }));
             }
             _ => {}
         }

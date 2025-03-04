@@ -1,4 +1,4 @@
-use crate::directory::DirItem;
+use crate::directory::{list_dir_items, DirItem};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
     buffer::Buffer,
@@ -20,6 +20,7 @@ pub struct App {
     cur_dir: String,
     base_dir: String,
     list: SizeList,
+    exts: Vec<String>,
     exit: bool,
 }
 
@@ -29,16 +30,20 @@ struct SizeList {
     state: ListState,
 }
 
+// TODO: fix:unwrap, clone
 impl App {
-    pub fn new(cur_dir: String, base_dir: String, items: Vec<DirItem>) -> Self {
+    // TODO: args
+    pub fn new(base_dir: &str, exts: &Vec<String>) -> Self {
+        let items = list_dir_items(&base_dir, exts).unwrap();
         let mut state = ListState::default();
         if !items.is_empty() {
             state.select(Some(0));
         }
         Self {
             list: SizeList { items, state },
-            cur_dir,
-            base_dir,
+            cur_dir: base_dir.to_string(),
+            base_dir: base_dir.to_string(),
+            exts: exts.iter().map(|s| s.to_string()).collect(),
             exit: false,
         }
     }
@@ -61,6 +66,8 @@ impl App {
             KeyCode::Char('q') | KeyCode::Esc => self.exit(),
             KeyCode::Up => self.select_prev(),
             KeyCode::Down => self.select_next(),
+            KeyCode::Left => self.move_to_parent(),
+            KeyCode::Right => self.move_to_child(),
             _ => {}
         }
     }
@@ -75,6 +82,20 @@ impl App {
 
     fn select_next(&mut self) {
         self.list.state.select_next();
+    }
+
+    fn move_to_parent(&mut self) {
+        todo!()
+    }
+
+    fn move_to_child(&mut self) {
+        if let Some(i) = self.list.state.selected() {
+            let item = &self.list.items[i];
+            if item.is_dir {
+                self.cur_dir = item.path.clone();
+                self.list.items = list_dir_items(&item.path, &self.exts).unwrap();
+            }
+        }
     }
 }
 
