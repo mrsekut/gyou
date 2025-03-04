@@ -1,46 +1,44 @@
+use crate::directory::DirItem;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Style, Stylize},
-    symbols,
+    style::{Color, Style},
     widgets::{
         Block, Borders, HighlightSpacing, List, ListItem, ListState, Paragraph, StatefulWidget,
         Widget,
     },
     DefaultTerminal,
 };
-use std::io::{self};
+use std::{
+    fs, io,
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug)]
 pub struct App {
-    dir: String,
+    cur_dir: String,
+    base_dir: String,
     list: SizeList,
     exit: bool,
 }
 
 #[derive(Debug)]
 struct SizeList {
-    items: Vec<SizeItem>,
+    items: Vec<DirItem>,
     state: ListState,
 }
 
-#[derive(Debug)]
-struct SizeItem {
-    is_dir: bool,
-    count: u32,
-    path: String,
-}
-
 impl App {
-    pub fn new(current_dir: &str) -> Self {
-        let state = ListState::default();
+    pub fn new(cur_dir: String, base_dir: String, items: Vec<DirItem>) -> Self {
+        let mut state = ListState::default();
+        if !items.is_empty() {
+            state.select(Some(0));
+        }
         Self {
-            list: SizeList {
-                items: vec![],
-                state,
-            },
-            dir: current_dir.to_string(),
+            list: SizeList { items, state },
+            cur_dir,
+            base_dir,
             exit: false,
         }
     }
@@ -50,7 +48,7 @@ impl App {
             terminal.draw(|frame| frame.render_widget(&mut self, frame.area()))?;
             if let Event::Key(key) = event::read()? {
                 self.handle_key(key);
-            };
+            }
         }
         Ok(())
     }
@@ -61,21 +59,22 @@ impl App {
         }
         match key.code {
             KeyCode::Char('q') | KeyCode::Esc => self.exit(),
+            KeyCode::Up => self.select_prev(),
+            KeyCode::Down => self.select_next(),
             _ => {}
         }
     }
 
-    // fn handle_key_event(&mut self, key_event: KeyEvent) {
-    //     match key_event.code {
-    //         KeyCode::Char('q') => self.exit(),
-    //         KeyCode::Left => self.decrement_counter(),
-    //         KeyCode::Right => self.increment_counter(),
-    //         _ => {}
-    //     }
-    // }
-
     fn exit(&mut self) {
         self.exit = true;
+    }
+
+    fn select_prev(&mut self) {
+        self.list.state.select_previous();
+    }
+
+    fn select_next(&mut self) {
+        self.list.state.select_next();
     }
 }
 
@@ -91,7 +90,7 @@ impl Widget for &mut App {
 
 impl App {
     fn render_list(&mut self, area: Rect, buf: &mut Buffer) {
-        let title = format!("Code Volume - {}", self.dir);
+        let title = format!("Code Volume - {}", self.cur_dir);
         let block = Block::new().borders(Borders::ALL).title(title);
 
         let items: Vec<ListItem> = self

@@ -1,6 +1,7 @@
 use std::{fs, io, path::Path};
 use walkdir::WalkDir;
 
+#[derive(Debug)]
 pub struct DirItem {
     pub path: String,
     pub count: usize,
