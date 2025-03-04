@@ -1,12 +1,14 @@
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
     buffer::Buffer,
-    layout::Rect,
-    style::Stylize,
-    symbols::border,
-    text::{Line, Text},
-    widgets::{Block, Paragraph, Widget},
-    DefaultTerminal, Frame,
+    layout::{Constraint, Layout, Rect},
+    style::{Color, Style, Stylize},
+    symbols,
+    widgets::{
+        Block, Borders, HighlightSpacing, List, ListItem, ListState, Paragraph, StatefulWidget,
+        Widget,
+    },
+    DefaultTerminal,
 };
 use std::io::{self};
 
@@ -20,37 +22,37 @@ pub struct App {
 #[derive(Debug)]
 struct SizeList {
     items: Vec<SizeItem>,
+    state: ListState,
 }
 
 #[derive(Debug)]
 struct SizeItem {
-    lines: u32,
+    is_dir: bool,
+    count: u32,
     path: String,
 }
 
 impl App {
     pub fn new(current_dir: &str) -> Self {
+        let state = ListState::default();
         Self {
-            list: SizeList { items: vec![] },
+            list: SizeList {
+                items: vec![],
+                state,
+            },
             dir: current_dir.to_string(),
             exit: false,
         }
     }
 
-    // TODO: mut?
-    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+    pub fn run(mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         while !self.exit {
-            terminal.draw(|frame| self.draw(frame))?;
+            terminal.draw(|frame| frame.render_widget(&mut self, frame.area()))?;
             if let Event::Key(key) = event::read()? {
                 self.handle_key(key);
             };
         }
         Ok(())
-    }
-
-    // TODO: inline
-    fn draw(&self, frame: &mut Frame) {
-        frame.render_widget(self, frame.area());
     }
 
     fn handle_key(&mut self, key: KeyEvent) {
@@ -77,55 +79,47 @@ impl App {
     }
 }
 
-impl App {
-    fn render_app(&self, area: Rect, buf: &mut Buffer) {
-        let title = self.title();
-        let instructions = self.instructions();
+impl Widget for &mut App {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let [main_area, footer_area] =
+            Layout::vertical([Constraint::Fill(1), Constraint::Length(3)]).areas(area);
 
-        let block = Block::bordered()
-            .title(title.centered())
-            .title_bottom(instructions.centered())
-            .border_set(border::THICK);
-
-        // let list_items: Vec<ListItem> = items
-        //     .iter()
-        //     .map(|item| {
-        //         let style = if item.is_dir {
-        //             Style::default().fg(Color::Blue)
-        //         } else {
-        //             Style::default().fg(Color::White)
-        //         };
-        //         ListItem::new(format!("{:>6} {}", item.count, item.path)).style(style)
-        //     })
-        //     .collect();
-
-        // let counter_text = Text::from(vec![Line::from(vec![
-        //     "Value: ".into(),
-        //     self.counter.to_string().yellow(),
-        // ])]);
-
-        // Paragraph::new(counter_text)
-        //     .centered()
-        //     .block(block)
-        //     .render(area, buf);
-    }
-
-    fn title(&self) -> Line {
-        Line::from(format!("Code Size - {}", self.dir).bold())
-    }
-
-    fn instructions(&self) -> Line {
-        Line::from(vec![
-            "←: Parent".into(),
-            "→: Child".into(),
-            "↑↓: Select".into(),
-            "q: Quit".into(),
-        ])
+        self.render_list(main_area, buf);
+        self.render_footer(footer_area, buf);
     }
 }
 
-impl Widget for &App {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        self.render_app(area, buf)
+impl App {
+    fn render_list(&mut self, area: Rect, buf: &mut Buffer) {
+        let title = format!("Code Volume - {}", self.dir);
+        let block = Block::new().borders(Borders::ALL).title(title);
+
+        let items: Vec<ListItem> = self
+            .list
+            .items
+            .iter()
+            .map(|item| {
+                let color = if item.is_dir {
+                    Color::Blue
+                } else {
+                    Color::White
+                };
+                let style = Style::default().fg(color);
+                ListItem::new(format!("{:>6} {}", item.count, item.path)).style(style)
+            })
+            .collect();
+
+        let list = List::new(items)
+            .block(block)
+            .highlight_symbol(">> ")
+            .highlight_spacing(HighlightSpacing::Always);
+
+        StatefulWidget::render(list, area, buf, &mut self.list.state);
+    }
+
+    fn render_footer(&self, area: Rect, buf: &mut Buffer) {
+        Paragraph::new("←: Parent   →: Child   ↑↓: Select   q: Quit")
+            .block(Block::default().borders(Borders::ALL).title("Instructions"))
+            .render(area, buf)
     }
 }
