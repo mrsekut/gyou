@@ -13,6 +13,7 @@ pub struct DirItem {
 
 /// 指定したルートディレクトリ内の各エントリを処理し、
 /// DirItem の Vec として返す。行数で降順ソートする。
+// TODO: name, clean
 pub fn list_dir_items(root: &Path, exts: &[String]) -> Result<Vec<DirItem>, io::Error> {
     let mut results = Vec::new();
 
@@ -23,10 +24,13 @@ pub fn list_dir_items(root: &Path, exts: &[String]) -> Result<Vec<DirItem>, io::
             if path.is_dir() {
                 results.push(process_directory(&path, exts));
             }
-            if path.is_file() {
-                if let Some(item) = process_file(&path, exts) {
-                    results.push(item);
-                }
+            if path.is_file() && has_the_extention(&path, exts) {
+                let item = DirItem {
+                    path: path.to_path_buf(),
+                    count: count_lines(&path),
+                    is_dir: false,
+                };
+                results.push(item);
             }
         }
     }
@@ -34,6 +38,7 @@ pub fn list_dir_items(root: &Path, exts: &[String]) -> Result<Vec<DirItem>, io::
     Ok(results)
 }
 
+// TODO: name
 fn process_directory(dir: &Path, exts: &[String]) -> DirItem {
     let count = sum_lines_in_directory(dir, exts);
     DirItem {
@@ -44,6 +49,7 @@ fn process_directory(dir: &Path, exts: &[String]) -> DirItem {
 }
 
 /// 再帰的に対象拡張子のファイルの行数を合計する
+// TODO: name
 fn sum_lines_in_directory(dir: &Path, exts: &[String]) -> usize {
     WalkDir::new(dir)
         .into_iter()
@@ -60,20 +66,15 @@ fn sum_lines_in_directory(dir: &Path, exts: &[String]) -> usize {
         .sum()
 }
 
-/// 対象拡張子なら DirItem を返す
-fn process_file(file: &Path, exts: &[String]) -> Option<DirItem> {
-    if let Some(ext) = file.extension().and_then(|s| s.to_str()) {
-        if exts.contains(&ext.to_string()) {
-            let count = fs::read_to_string(file)
-                .map(|content| content.lines().count())
-                .unwrap_or(0);
+fn has_the_extention(path: &Path, exts: &[String]) -> bool {
+    path.extension()
+        .and_then(|s| s.to_str())
+        .map(|ext| exts.contains(&ext.to_string()))
+        .unwrap_or(false)
+}
 
-            return Some(DirItem {
-                path: file.to_path_buf(),
-                count,
-                is_dir: false,
-            });
-        }
-    }
-    None
+fn count_lines(path: &Path) -> usize {
+    fs::read_to_string(path)
+        .map(|content| content.lines().count())
+        .unwrap_or(0)
 }
