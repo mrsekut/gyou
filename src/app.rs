@@ -30,21 +30,21 @@ struct SizeList {
     state: ListState,
 }
 
-// TODO: fix:unwrap, clone, args&
+// TODO: fix:clone, args&
 impl App {
-    pub fn new(base_dir: &str, exts: &Vec<String>) -> Self {
-        let items = list_dir_items(&base_dir, exts).unwrap();
+    pub fn new(base_dir: &str, exts: &Vec<String>) -> io::Result<Self> {
+        let items = list_dir_items(base_dir, exts)?;
         let mut state = ListState::default();
         if !items.is_empty() {
             state.select(Some(0));
         }
-        Self {
+        Ok(Self {
             list: SizeList { items, state },
             cur_dir: base_dir.to_string(),
             base_dir: base_dir.to_string(),
-            exts: exts.iter().map(|s| s.to_string()).collect(),
+            exts: exts.clone(),
             exit: false,
-        }
+        })
     }
 
     pub fn run(mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
@@ -65,8 +65,12 @@ impl App {
             KeyCode::Char('q') | KeyCode::Esc => self.exit(),
             KeyCode::Up => self.select_prev(),
             KeyCode::Down => self.select_next(),
-            KeyCode::Right => self.move_to_child(),
-            KeyCode::Left => self.move_to_parent(),
+            KeyCode::Right => {
+                let _ = self.move_to_child();
+            }
+            KeyCode::Left => {
+                let _ = self.move_to_parent();
+            }
             _ => {}
         }
     }
@@ -83,25 +87,27 @@ impl App {
         self.list.state.select_next();
     }
 
-    fn move_to_child(&mut self) {
+    fn move_to_child(&mut self) -> io::Result<()> {
         if let Some(i) = self.list.state.selected() {
             let item = &self.list.items[i];
             if item.is_dir {
                 self.cur_dir = item.path.clone();
-                self.list.items = list_dir_items(&item.path, &self.exts).unwrap();
+                self.list.items = list_dir_items(&item.path, &self.exts)?;
             }
         }
+        Ok(())
     }
 
-    fn move_to_parent(&mut self) {
+    fn move_to_parent(&mut self) -> io::Result<()> {
         if self.is_at_root() {
-            return;
+            return Ok(());
         }
 
-        let parent = Path::new(&self.cur_dir).parent().unwrap();
-
-        self.cur_dir = parent.to_string_lossy().to_string();
-        self.list.items = list_dir_items(&self.cur_dir, &self.exts).unwrap();
+        if let Some(parent) = Path::new(&self.cur_dir).parent() {
+            self.cur_dir = parent.to_string_lossy().to_string();
+            self.list.items = list_dir_items(&self.cur_dir, &self.exts)?;
+        }
+        Ok(())
     }
 
     fn is_at_root(&self) -> bool {
