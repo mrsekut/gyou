@@ -31,7 +31,7 @@ struct SizeList {
 }
 
 impl App {
-    pub fn new(base_dir: &str, exts: &Vec<String>) -> io::Result<Self> {
+    pub fn new(base_dir: &str, exts: &[String]) -> io::Result<Self> {
         let base_path = PathBuf::from(base_dir);
         let items = list_dir_items(&base_path, exts)?;
 
@@ -44,7 +44,7 @@ impl App {
             list: SizeList { items, state },
             cur_dir: base_path.clone(),
             base_dir: base_path,
-            exts: exts.to_vec(),
+            exts: exts.to_owned(),
             exit: false,
         })
     }
