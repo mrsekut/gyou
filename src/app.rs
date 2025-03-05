@@ -17,8 +17,8 @@ use std::{
 
 #[derive(Debug)]
 pub struct App {
-    cur_dir: String,
-    base_dir: String,
+    cur_dir: PathBuf,
+    base_dir: PathBuf,
     list: SizeList,
     exts: Vec<String>,
     exit: bool,
@@ -30,19 +30,21 @@ struct SizeList {
     state: ListState,
 }
 
-// TODO: fix:clone, args&
 impl App {
     pub fn new(base_dir: &str, exts: &Vec<String>) -> io::Result<Self> {
-        let items = list_dir_items(base_dir, exts)?;
+        let base_path = PathBuf::from(base_dir);
+        let items = list_dir_items(&base_path, exts)?;
+
         let mut state = ListState::default();
         if !items.is_empty() {
             state.select(Some(0));
         }
+
         Ok(Self {
             list: SizeList { items, state },
-            cur_dir: base_dir.to_string(),
-            base_dir: base_dir.to_string(),
-            exts: exts.clone(),
+            cur_dir: base_path.clone(),
+            base_dir: base_path,
+            exts: exts.to_vec(),
             exit: false,
         })
     }
@@ -104,7 +106,7 @@ impl App {
         }
 
         if let Some(parent) = Path::new(&self.cur_dir).parent() {
-            self.cur_dir = parent.to_string_lossy().to_string();
+            self.cur_dir = parent.to_path_buf();
             self.list.items = list_dir_items(&self.cur_dir, &self.exts)?;
         }
         Ok(())
@@ -117,7 +119,7 @@ impl App {
     }
 }
 
-fn canonicalize_path(path: &str) -> PathBuf {
+fn canonicalize_path(path: &Path) -> PathBuf {
     fs::canonicalize(path).unwrap_or_else(|_| Path::new(path).to_path_buf())
 }
 
@@ -133,7 +135,7 @@ impl Widget for &mut App {
 
 impl App {
     fn render_list(&mut self, area: Rect, buf: &mut Buffer) {
-        let title = format!("Code Volume - {}", self.cur_dir);
+        let title = format!("Code Volume - {}", self.cur_dir.to_string_lossy());
         let block = Block::new().borders(Borders::ALL).title(title);
 
         let items: Vec<ListItem> = self
@@ -147,7 +149,8 @@ impl App {
                     Color::White
                 };
                 let style = Style::default().fg(color);
-                ListItem::new(format!("{:>6} {}", item.count, item.path)).style(style)
+                ListItem::new(format!("{:>6} {}", item.count, item.path.to_string_lossy()))
+                    .style(style)
             })
             .collect();
 
