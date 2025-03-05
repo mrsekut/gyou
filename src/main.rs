@@ -9,6 +9,7 @@ mod directory;
 struct Args {
     #[clap(default_value = "src")]
     root: String,
+
     #[clap(
         long = "ext",
         short = 'e',
@@ -17,23 +18,19 @@ struct Args {
     ext: Option<String>,
 }
 
-// 実行方法:
-//     cargo run -- [検索するルートディレクトリ] [--file-ext "拡張子,拡張子"]
-// 例: cargo run -- src --file-ext "rs,txt"
-// TODO: clean
+// Usage:
+//     cargo run -- [root directory to search] [--ext "extension"]
+// Example: cargo run -- src --ext "rs,txt"
 fn main() -> io::Result<()> {
     let args = Args::parse();
-    let ext_filter: Vec<String> = if let Some(exts) = args.ext {
-        exts.split(',')
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .collect()
-    } else {
-        vec![] // all files
+
+    let exts = match &args.ext {
+        Some(e) => e.split(',').map(|s| s.trim().to_string()).collect(),
+        None => vec![], // all files
     };
 
     let mut terminal = ratatui::init();
-    let app_result = App::new(&args.root, &ext_filter).run(&mut terminal);
+    let app_result = App::new(&args.root, &exts).run(&mut terminal);
 
     ratatui::restore();
     app_result
