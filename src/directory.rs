@@ -11,58 +11,41 @@ pub struct DirItem {
     pub is_dir: bool,
 }
 
-/// 指定したルートディレクトリ内の各エントリを処理し、
-/// DirItem の Vec として返す。行数で降順ソートする。
-// TODO: name, clean
 pub fn list_dir_items(root: &Path, exts: &[String]) -> Result<Vec<DirItem>, io::Error> {
-    let mut results = Vec::new();
-
-    for entry in fs::read_dir(root)? {
-        if let Ok(entry) = entry {
+    let mut results = fs::read_dir(root)?
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
             let path = entry.path();
 
             if path.is_dir() {
-                results.push(process_directory(&path, exts));
-            }
-            if path.is_file() && has_the_extention(&path, exts) {
-                let item = DirItem {
-                    path: path.to_path_buf(),
+                Some(DirItem {
+                    path: path.clone(),
+                    count: sum_lines_in_dir(&path, exts),
+                    is_dir: true,
+                })
+            } else if path.is_file() && has_the_extention(&path, exts) {
+                Some(DirItem {
+                    path: path.clone(),
                     count: count_lines(&path),
                     is_dir: false,
-                };
-                results.push(item);
+                })
+            } else {
+                None
             }
-        }
-    }
+        })
+        .collect::<Vec<_>>();
+
     results.sort_by(|a, b| b.count.cmp(&a.count));
     Ok(results)
 }
 
-// TODO: name
-fn process_directory(dir: &Path, exts: &[String]) -> DirItem {
-    let count = sum_lines_in_directory(dir, exts);
-    DirItem {
-        path: dir.to_path_buf(),
-        count,
-        is_dir: true,
-    }
-}
-
-/// 再帰的に対象拡張子のファイルの行数を合計する
-// TODO: name
-fn sum_lines_in_directory(dir: &Path, exts: &[String]) -> usize {
+fn sum_lines_in_dir(dir: &Path, exts: &[String]) -> usize {
     WalkDir::new(dir)
         .into_iter()
         .filter_map(Result::ok)
         .filter(|f| f.file_type().is_file())
-        .filter_map(|f| {
-            f.path()
-                .extension()
-                .and_then(|s| s.to_str())
-                .filter(|ext| exts.contains(&ext.to_string()))
-                .and_then(|_| fs::read_to_string(f.path()).ok())
-        })
-        .map(|content| content.lines().count())
+        .filter(|f| has_the_extention(f.path(), exts))
+        .map(|f| count_lines(f.path()))
         .sum()
 }
 
